@@ -7,19 +7,21 @@ import { useNavigate } from "react-router-dom";
 import { nightsky } from "../../assets/imgexp.js";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
-import { FaRegEye , FaRegEyeSlash } from "react-icons/fa6";
+import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
+import axios from "axios";
 
 function MobileLogin() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { register, handleSubmit,formState: { errors },} = useForm();  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
   const [error, setError] = useState("");
   const [signIn, setSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false); // Loader for API calls
-  
-  
-
 
   const toggleForm = () => {
     setSignIn(!signIn);
@@ -34,14 +36,16 @@ function MobileLogin() {
     setError("");
     setIsSubmitting(true);
     try {
-      const session = await authService.login(data);
-      if (session) {
-        const userData = await authService.getCurrentUser();
-        if (userData) {
-          dispatch(storeLogin(userData));
-          toast.success("Login Successful!");
-          navigate('/');
-        }
+      const response = await axios.post("http://localhost:5000/api/users/login", data, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+      console.log("Res: ", response);
+
+      if (response) {
+        dispatch(storeLogin(response));
+        toast.success("Login Successful!");
+        navigate("/");
       }
     } catch (error) {
       if (error.code === 401) {
@@ -49,7 +53,7 @@ function MobileLogin() {
       } else {
         setError(error.message || "An error occurred. Please try again.");
       }
-    }finally {
+    } finally {
       setIsSubmitting(false); // Hide loader
     }
   };
@@ -59,40 +63,39 @@ function MobileLogin() {
     setError("");
     setIsSubmitting(true);
     try {
-      const session = await authService.createAccount(data);
-      if (session) {
-        const userData = await authService.getCurrentUser();
-        if (userData) {
-          dispatch(storeLogin(userData));
-          toast.success("Sign-Up Successful!");
-          navigate("/");
-        }
-      }
+      const response = await axios.post("http://localhost:5000/api/users/register", data, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+
+      toast.success("Registration Successful!");
+      localStorage.setItem("user", JSON.stringify(response.data));
+      navigate("/");
     } catch (error) {
       if (error.code === 409) {
         setError("Account already exists with this email.");
       } else {
         setError(error.message || "An error occurred. Please try again.");
       }
-    }finally {
+    } finally {
       setIsSubmitting(false); // Hide loader
     }
   };
 
   return (
-   <>
-   <div 
-   className="h-screen w-full flex font-poppins justify-center items-center bg-gradient-to-br from-[#1a1919] via-gray-800 to-slate-700"
-   style={{
-     backgroundImage: `url(${nightsky})`,
-     backgroundSize: 'cover', // or 'contain'
-     backgroundPosition: 'center',
-    //  width: '100%',
-    //  height: '100vh',
-   }}>
-
-    <div className="">
-    <div
+    <>
+      <div
+        className="h-screen w-full flex font-poppins justify-center items-center bg-gradient-to-br from-[#1a1919] via-gray-800 to-slate-700"
+        style={{
+          backgroundImage: `url(${nightsky})`,
+          backgroundSize: "cover", // or 'contain'
+          backgroundPosition: "center",
+          //  width: '100%',
+          //  height: '100vh',
+        }}
+      >
+        <div className="">
+          <div
             className={` inset-0 p-8 bg-transparent flex flex-col justify-center transition-transform duration-700 `}
           >
             <div className="bg-gray-300 bg-opacity-10 border border-gray-100 backdrop-filter backdrop-blur-sm p-8 rounded-2xl">
@@ -100,10 +103,7 @@ function MobileLogin() {
                 {signIn ? "Sign In" : "Create Account"}
               </h2>
 
-              <form
-                className="w-full"
-                onSubmit={handleSubmit(signIn ? login : createAccount)}
-              >
+              <form className="w-full" onSubmit={handleSubmit(signIn ? login : createAccount)}>
                 {!signIn && (
                   <>
                     <input
@@ -120,11 +120,7 @@ function MobileLogin() {
                       })}
                       className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
                     />
-                    {errors.name && (
-                      <p className="text-red-600 text-sm">
-                        {errors.name.message}
-                      </p>
-                    )}
+                    {errors.name && <p className="text-red-600 text-sm">{errors.name.message}</p>}
                   </>
                 )}
 
@@ -137,45 +133,38 @@ function MobileLogin() {
                     required: true,
                     validate: {
                       matchPattern: (value) =>
-                        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(
-                          value
-                        ) || "Email address must be a valid address",
+                        /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value) ||
+                        "Email address must be a valid address",
                     },
                   })}
                   className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
                 />
-                {errors.email && (
-                  <p className="text-red-600 text-sm">{errors.email.message}</p>
-                )}
+                {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
 
                 <div className=" relative flex">
-
-                <input
-                  type={showPassword ? "text" : "password"}
-                  label="password"
-                  placeholder="Password"
-                  autoComplete="on"
-                  {...register("password", {
-                    required: "Password is required",
-                    validate: {
-                      matchPattern: (value) =>
-                        /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(value) ||
-                      "Password must be at least 8 characters long and include both letters and numbers",
-                    },
-                  })}
-                  className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    label="password"
+                    placeholder="Password"
+                    autoComplete="on"
+                    {...register("password", {
+                      required: "Password is required",
+                      validate: {
+                        matchPattern: (value) =>
+                          /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@]{8,}$/.test(value) || "Weak password",
+                      },
+                    })}
+                    className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
                   />
-                 <span
-          onClick={togglePasswordVisibility}
-          className=" absolute right-1 text-xl p-3 cursor-pointer opacity-65 bg-transparent"
-          >
-          {showPassword ? <FaRegEyeSlash /> : <FaRegEye /> } 
-        </span>
-        </div>
+                  <span
+                    onClick={togglePasswordVisibility}
+                    className=" absolute right-1 text-xl p-3 cursor-pointer opacity-65 bg-transparent"
+                  >
+                    {showPassword ? <FaRegEyeSlash /> : <FaRegEye />}
+                  </span>
+                </div>
                 {errors.password && (
-                  <p className="text-red-600 text-sm">
-                    {errors.password.message}
-                  </p>
+                  <p className="text-red-600 text-sm">{errors.password.message}</p>
                 )}
 
                 <motion.button
@@ -189,9 +178,7 @@ function MobileLogin() {
                 </motion.button>
 
                 {error && (
-                  <p className="text-red-600 text-center font-mono text-sm mt-4">
-                    {error}
-                  </p>
+                  <p className="text-red-600 text-center font-mono text-sm mt-4">{error}</p>
                 )}
               </form>
             </div>
@@ -217,10 +204,9 @@ function MobileLogin() {
               </button>
             </div>
           </div>
-
-    </div>
-   </div>
-   </>
+        </div>
+      </div>
+    </>
   );
 }
 

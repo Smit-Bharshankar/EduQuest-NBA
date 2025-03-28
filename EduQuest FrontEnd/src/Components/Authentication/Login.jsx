@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import MobileLogin from "./MobileLogin.jsx";
 import { toast } from "react-toastify";
 import { FaRegEye, FaRegEyeSlash } from "react-icons/fa6";
+import axios from "axios";
 
 function Login() {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 500); // Initialize correctly
@@ -19,7 +20,11 @@ function Login() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
 
   // Optimized resize handler using useCallback
   const handleResize = useCallback(() => {
@@ -42,15 +47,21 @@ function Login() {
     setError("");
     setIsSubmitting(true); // Show loader
     try {
-      const session = await authService.login(data);
-      if (session) {
-        const userData = await authService.getCurrentUser();
-        dispatch(storeLogin(userData));
+      const response = await axios.post("http://localhost:5000/api/users/login", data, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+      console.log("Res: ", response);
+
+      if (response) {
+        dispatch(storeLogin(response));
         toast.success("Login Successful!");
         navigate("/");
       }
     } catch (error) {
-      setError(error.code === 401 ? "Incorrect ID or Password" : error.message || "An error occurred.");
+      setError(
+        error.code === 401 ? "Incorrect ID or Password" : error.message || "An error occurred."
+      );
     } finally {
       setIsSubmitting(false); // Hide loader
     }
@@ -60,15 +71,20 @@ function Login() {
     setError("");
     setIsSubmitting(true);
     try {
-      const session = await authService.createAccount(data);
-      if (session) {
-        const userData = await authService.getCurrentUser();
-        dispatch(storeLogin(userData));
-        toast.success("Sign-Up Successful!");
-        navigate("/");
-      }
+      const response = await axios.post("http://localhost:5000/api/users/register", data, {
+        headers: { "Content-Type": "application/json" },
+        withCredentials: true,
+      });
+
+      toast.success("Registration Successful!");
+      localStorage.setItem("user", JSON.stringify(response.data));
+      navigate("/");
     } catch (error) {
-      setError(error.code === 409 ? "Account already exists with this email." : error.message || "An error occurred.");
+      setError(
+        error.code === 409
+          ? "Account already exists with this email."
+          : error.message || "An error occurred."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -96,10 +112,7 @@ function Login() {
                 {signIn ? "Sign In" : "Create Account"}
               </h2>
 
-              <form
-                className="w-full"
-                onSubmit={handleSubmit(signIn ? login : createAccount)}
-              >
+              <form className="w-full" onSubmit={handleSubmit(signIn ? login : createAccount)}>
                 {!signIn && (
                   <>
                     <input
@@ -114,9 +127,7 @@ function Login() {
                       })}
                       className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
                     />
-                    {errors.name && (
-                      <p className="text-red-600 text-sm">{errors.name.message}</p>
-                    )}
+                    {errors.name && <p className="text-red-600 text-sm">{errors.name.message}</p>}
                   </>
                 )}
 
@@ -126,15 +137,12 @@ function Login() {
                   {...register("email", {
                     required: true,
                     validate: {
-                      matchPattern: (value) =>
-                        /^\S+@\S+\.\S+$/.test(value) || "Invalid email",
+                      matchPattern: (value) => /^\S+@\S+\.\S+$/.test(value) || "Invalid email",
                     },
                   })}
                   className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
                 />
-                {errors.email && (
-                  <p className="text-red-600 text-sm">{errors.email.message}</p>
-                )}
+                {errors.email && <p className="text-red-600 text-sm">{errors.email.message}</p>}
 
                 <div className="relative flex">
                   <input
@@ -144,8 +152,7 @@ function Login() {
                       required: "Password is required",
                       validate: {
                         matchPattern: (value) =>
-                          /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(value) ||
-                          "Weak password",
+                          /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@]{8,}$/.test(value) || "Weak password",
                       },
                     })}
                     className="w-full p-2 mb-4 border border-gray-300 rounded-lg"
@@ -174,9 +181,7 @@ function Login() {
                 </motion.button>
 
                 {error && (
-                  <p className="text-red-600 text-center font-mono text-sm mt-4">
-                    {error}
-                  </p>
+                  <p className="text-red-600 text-center font-mono text-sm mt-4">{error}</p>
                 )}
               </form>
             </div>
